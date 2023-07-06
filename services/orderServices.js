@@ -10,6 +10,7 @@ let stripe=require('stripe')(process.env.STRIPE_SECRET);
 let handler=require('express-async-handler');
 const apiError = require('../utils/apiError');
 const { request } = require('http');
+const User = require('../models/userModel');
 let createOrder=handler(async (req,res,next)=>{
     let taxPrice=5;
     let shippingPrice=20;
@@ -106,8 +107,32 @@ let checkoutSession=handler(async(req, res, next)=>{
 
 });
 
-let createCardOrder=(event)=>{
+let createCardOrder=async(event)=>{
+    let session=event.data.object;
+    let cartId=session.client_reference_id;
+    let userEmail=session.customer_email;
+    let user=await User.findOne({email:userEmail});
+    let cart= await Cart.findById(cartId);
 
+    let order=await Order.create({
+        cartItems:cart.cartItems,
+        user:user._id,
+    });
+    if(cart.totalPriceAfterDiscount){
+        order.totalPrice=cart.totalPriceAfterDiscount+taxPrice+shippingPrice;
+    }else{
+        order.totalPrice=cart.totalPrice+taxPrice+shippingPrice;
+    };
+
+    await order.save();
+    let products=cart.cartItems.map(async(item)=>{
+        return await Product.findByIdAndUpdate(item.product,
+            {$inc:{quantity:-item.quantity,sold:item.quantity}},{new:true});
+    });
+    console.log(products);
+    await Promise.all(products);
+    await Cart.findByIdAndDelete(req.params.id);
+    res.status(200).json({result:"success",data:order});
 };
 
 let webhookCheckout=handler(async(req,res,next)=>{
@@ -117,15 +142,16 @@ let webhookCheckout=handler(async(req,res,next)=>{
         event = stripe.webhooks.constructEvent(req.body, sig,process.env.WEBHOOK_SECRET);
     } catch (err) {
         return res.status(400).send(`Webhook Error: ${err.message}`);
-        console.log(err);
+        // console.log(err);
     };
     if(event.type === "checkout.session.completed"){
-        // createCardOrder(event);
+        
+        createCardOrder(event);
         console.log(event);
-        let sessionWithLineItems = await stripe.checkout.sessions.retrieve(
-                event.data.object.id, { expand: ['line_items'], }
-            );
-            const lineItems = sessionWithLineItems.line_items;
+        // let sessionWithLineItems = await stripe.checkout.sessions.retrieve(
+                // event.data.object.id, { expand: ['line_items'], }
+            // );
+            // const lineItems = sessionWithLineItems.line_items;
     }
 });
 
