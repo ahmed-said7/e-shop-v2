@@ -117,6 +117,8 @@ let createCardOrder=async(event)=>{
     let order=await Order.create({
         cartItems:cart.cartItems,
         user:user._id,
+        ispaid:true,
+        paidAt:Date.now()
     });
     if(cart.totalPriceAfterDiscount){
         order.totalPrice=cart.totalPriceAfterDiscount+taxPrice+shippingPrice;
@@ -145,7 +147,6 @@ let webhookCheckout=handler(async(req,res,next)=>{
         // console.log(err);
     };
     if(event.type === "checkout.session.completed"){
-        
         createCardOrder(event);
         console.log(event);
         // let sessionWithLineItems = await stripe.checkout.sessions.retrieve(
