@@ -122,6 +122,10 @@ let webhookCheckout=handler(async(req,res,next)=>{
     if(event.type === "checkout.session.completed"){
         // createCardOrder(event);
         console.log(event);
+        let sessionWithLineItems = await stripe.checkout.sessions.retrieve(
+                event.data.object.id, { expand: ['line_items'], }
+            );
+            const lineItems = sessionWithLineItems.line_items;
     }
 });
 
