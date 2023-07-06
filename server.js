@@ -29,7 +29,8 @@ app.use(cors());
 app.options('*', cors());
 
 // app.use(compression());
-
+let {webhookCheckout}=require('./services/orderServices');
+app.post('/webhook', express.raw({type: 'application/json'}),webhookCheckout);
 
 app.use('/api/v1/categories',categoryRoute);
 app.use('/api/v1/subcategories',subCategoryRoute);

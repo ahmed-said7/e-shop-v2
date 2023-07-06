@@ -106,7 +106,24 @@ let checkoutSession=handler(async(req, res, next)=>{
 
 });
 
+let createCardOrder=(event)=>{
 
+};
+
+let webhookCheckout=handler(async(req,res,next)=>{
+    let sig = req.headers['stripe-signature'];
+    let event;
+    try {
+        event = stripe.webhooks.constructEvent(req.body, sig,process.env.WEBHOOK_SECRET);
+    } catch (err) {
+        return res.status(400).send(`Webhook Error: ${err.message}`);
+        console.log(err);
+    };
+    if(event.type === "checkout.session.completed"){
+        // createCardOrder(event);
+        console.log(event);
+    }
+});
 
 module.exports={createOrder,
-    updateOrderDelivered,updateOrderPaid,getSpecificOrder,getLoggedUserOrder,checkoutSession};
+    updateOrderDelivered,updateOrderPaid,getSpecificOrder,getLoggedUserOrder,checkoutSession,webhookCheckout};
