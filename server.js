@@ -6,7 +6,7 @@ let compression=require('compression');
 dotenv.config({path:"./environment.env"});
 let morgan=require('morgan');
 app.use(morgan('dev'))
-app.use(express.json());
+
 let globalError=require('./middlewares/errorMiddleware')
 const {databaseConnect}=require('./config/database');
 databaseConnect(process.env.URL)
@@ -30,8 +30,8 @@ app.options('*', cors());
 
 // app.use(compression());
 let {webhookCheckout}=require('./services/orderServices');
-app.post('/webhook', express.raw({type: 'application/json'}),webhookCheckout);
-
+app.post('/webhook',express.raw({ type: 'application/json' }),webhookCheckout);
+app.use(express.json());
 app.use('/api/v1/categories',categoryRoute);
 app.use('/api/v1/subcategories',subCategoryRoute);
 app.use('/api/v1/brands',brandRoute);

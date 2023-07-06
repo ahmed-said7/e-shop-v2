@@ -111,30 +111,34 @@ let createCardOrder=async(event)=>{
     let session=event.data.object;
     let cartId=session.client_reference_id;
     let userEmail=session.customer_email;
+    console.log(cartId);
+    console.log(userEmail);
     let user=await User.findOne({email:userEmail});
     let cart= await Cart.findById(cartId);
-
     let order=await Order.create({
         cartItems:cart.cartItems,
         user:user._id,
         ispaid:true,
         paidAt:Date.now()
     });
+
     if(cart.totalPriceAfterDiscount){
-        order.totalPrice=cart.totalPriceAfterDiscount+taxPrice+shippingPrice;
+        order.totalPrice=cart.totalPriceAfterDiscount;
     }else{
-        order.totalPrice=cart.totalPrice+taxPrice+shippingPrice;
+        order.totalPrice=cart.totalPrice;
     };
 
     await order.save();
+
+
     let products=cart.cartItems.map(async(item)=>{
         return await Product.findByIdAndUpdate(item.product,
             {$inc:{quantity:-item.quantity,sold:item.quantity}},{new:true});
     });
-    console.log(products);
+    console.log(order);
     await Promise.all(products);
-    await Cart.findByIdAndDelete(req.params.id);
-    res.status(200).json({result:"success",data:order});
+    // await Cart.findByIdAndDelete(req.params.id);
+    return order;
 };
 
 let webhookCheckout=handler(async(req,res,next)=>{
@@ -143,18 +147,17 @@ let webhookCheckout=handler(async(req,res,next)=>{
     try {
         event = stripe.webhooks.constructEvent(req.body, sig,process.env.WEBHOOK_SECRET);
     } catch (err) {
+        console.log(err);
         return res.status(400).send(`Webhook Error: ${err.message}`);
-        // console.log(err);
+        
     };
     if(event.type === "checkout.session.completed"){
-        createCardOrder(event);
-        console.log(event);
-        // let sessionWithLineItems = await stripe.checkout.sessions.retrieve(
-                // event.data.object.id, { expand: ['line_items'], }
-            // );
-            // const lineItems = sessionWithLineItems.line_items;
-    }
+        console.log(event.data.object,event.type);
+        let order=await createCardOrder(event);
+        res.status(200).json({status:"success",data:order});
+    };
 });
 
-module.exports={createOrder,
-    updateOrderDelivered,updateOrderPaid,getSpecificOrder,getLoggedUserOrder,checkoutSession,webhookCheckout};
+module.exports=
+{createOrder,updateOrderDelivered,updateOrderPaid,
+    getSpecificOrder,getLoggedUserOrder,checkoutSession,webhookCheckout};
